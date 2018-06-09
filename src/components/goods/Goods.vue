@@ -29,15 +29,21 @@
                    <span class="now">￥{{food.price}}</span>
                    <span class="old" v-show="food.oldPrice">￥{{food.oldPrice}}</span>
                  </div>
+                 <div class="cartcontrol-wrapper">
+                   <Cartcontrol :food="food" @cartAdd="cartAdd2"></Cartcontrol>
+                 </div>
                </div>
              </li>
            </ul>
          </li>
        </ul>
      </div>
+     <Shopcart ref="shopcart" :select-foods="selectFoods" :delivery-price="seller.deliveryPrice" :min-price="seller.minPrice"></Shopcart>
    </div>
 </template>
-<script>
+<script type="text/ecmascript-6">
+ import Shopcart from '../../components/shopcart/Shopcart'
+ import Cartcontrol from '../../components/cartcontrol/Cartcontrol'
  import BScroll from 'better-scroll'
  const ERR_OK = 0
  export default {
@@ -63,6 +69,17 @@
            }
          }
          return 0
+     },
+     selectFoods() {
+         let foods = []
+         this.goods.forEach((good) => {
+             good.foods.forEach((food) => {
+                if(food.count) {
+                    foods.push(food)
+                }
+             })
+         })
+        return foods
      }
    },
    created(){
@@ -81,7 +98,8 @@
    methods:{
        initScroll() {
          this.foodsScroll = new BScroll(this.$refs.foods,{
-           probeType: 3
+           probeType: 3,
+           click:true
          })
          this.menuScroll = new BScroll(this.$refs.menu,{
              click:true
@@ -101,8 +119,6 @@
          }
        },
        selectMenu(index,event) {
-           console.log('逻辑索引'+index)
-          console.log('当前点击li索引'+this.currentIndex)
          if(index <= 0) {
                index = 0
          }
@@ -112,8 +128,23 @@
          let foodList = this.$refs.foods.getElementsByClassName('food-list-hook')
          let el = foodList[index]
          this.foodsScroll.scrollToElement(el,300)
-       }
+       },
+      _drop(target) {
+         this.$refs.shopcart.drop(target)//在vue2中，访问子组件和DOM都用$refs
+      },
+     cartAdd2(target) {
+           this._drop(target)
+     }
+   },
+   components: {
+      Shopcart,
+      Cartcontrol
    }
+//   events:{
+//       'cartAdd2'(target) {//Goods组件接受到了Cartcontrol组件派发来的自定义事件
+//           this._drop(target)//一路将Cartcontrol组件传来的target参数传到父组件_drop方法中
+//       }
+//   }
  }
 </script>
 <style lang="stylus" rel="stylesheet/stylus">
@@ -219,4 +250,9 @@
              text-decoration:line-through
              font-size: 10px
              color: rgb(147,153,159)
+         .cartcontrol-wrapper
+            position:absolute
+            right:0
+            bottom:12px
+            font-size: 0
 </style>
