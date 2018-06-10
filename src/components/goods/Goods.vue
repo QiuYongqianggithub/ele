@@ -130,7 +130,9 @@
          this.foodsScroll.scrollToElement(el,300)
        },
       _drop(target) {
-         this.$refs.shopcart.drop(target)//在vue2中，访问子组件和DOM都用$refs
+         this.$nextTick(() => { //避免两个动画同时运行带来的性能问题
+           this.$refs.shopcart.drop(target)//在vue2中，访问子组件和DOM都用$refs
+         })
       },
      cartAdd2(target) {
            this._drop(target)

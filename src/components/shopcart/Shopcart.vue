@@ -1,6 +1,6 @@
 <template>
 	<div class="shopcart">
-    <div class="content">
+    <div class="content" @click="toggleList">
       <div class="content-left">
         <div class="logo-wrapper">
           <div class="logo" :class="{'highlight': totalCount>0}">
@@ -16,15 +16,41 @@
       </div>
     </div>
     <div class="ball-container">
-        <transition name="drop" v-on:before-enter="beforeEnter" v-on:enter="enter" v-on:after-enter="afterEnter">
-          <div class="ball" :key="index" v-for="(ball,index) in balls" v-if="ball.show">
-            <div class="inner inner-hook"></div>
+      <div v-for="ball in balls">
+        <transition name="drop" @before-enter="beforeEnter" @enter="enter" @after-enter="afterEnter">
+          <div v-show="ball.show" class="ball">
+            <div class="inner inner-hook">
+            </div>
           </div>
         </transition>
+      </div>
     </div>
+    <transition name="fold">
+      <div class="shopcart-list" v-show="listShow">
+        <div class="list-header">
+          <h3 class="title">购物车</h3>
+          <span class="empty" @click="empty">清空</span>
+        </div>
+        <div class="list-content" ref="listContent">
+          <ul>
+            <li class="food" v-for="food in selectFoods">
+              <span class="name">{{food.name}}</span>
+              <div class="price">
+                <span>￥{{food.price*food.count}}</span>
+              </div>
+              <div class="cartcontrol-wrapper">
+                <Cartcontrol :food="food"  @cartAdd="cartAdd2"></Cartcontrol>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </transition>
 	</div>
 </template>
 <script type="text/ecmascript-6">
+  import Cartcontrol from '../../components/cartcontrol/Cartcontrol'
+  import BScroll from 'better-scroll'
 export default {
     props:{
         deliveryPrice:{
@@ -43,7 +69,7 @@ export default {
         }
     },
     data() {
-      return {
+      return {//五个小球是跟动画的执行速度有关,如果你写一个小球,那么当这个小球动画执行完成之前,你就没有其他小球可以使用了,换言之,就是你必须等你设置的这个小球完全执行完你才可以继续点击,这样体验就不好,你写多个小球,就能够保证上一个小球的动画没执行完之前,可以触发另外一个小球,反正你有多个,至于多个小球为什么是五个,是经过测试的,用大概一次动画执行完的时间来估算,五个小球基本就可以不怕出现上述的情况,你也可以写五十个
           balls:[
             {show:false},
             {show:false},
@@ -51,7 +77,8 @@ export default {
             {show:false},
             {show:false}
           ],
-        dropBalls:[]
+        dropBalls:[],
+        fold:true
       }
     },
     computed: {
@@ -85,55 +112,95 @@ export default {
             }else {
                 return 'enough'
             }
-       }
+       },
+      listShow() {
+        if(!this.totalCount) {
+          this.fold = true
+          return false
+        }
+        let show = !this.fold
+        if (show) {
+          this.$nextTick(() => {
+            if(!this.scroll) {
+              this.scroll = new BScroll(this.$refs.listContent,{
+                click :true
+              })
+            } else {
+              this.scroll.refresh()
+            }
+          })
+        }
+        return show
+      }
     },
+
     methods: {
-        drop(el) {
+        drop(el) {//关于drop方法,是实现每一个ball的show属性和el属性处理,并且点击一次会自动将一个小球放到dropBalls数组里面,放到里面就代表的是一个小球已经被开始执行动画,但是由于动画是异步的,所以先主动设置所有小球
             for (let i = 0; i < this.balls.length;i++) {
                let ball = this.balls[i];
                if (!ball.show) {
                    ball.show = true
-                   ball.el = el
-                 this.dropBalls.push(ball)
+                   ball.el = el //将加号按钮元素(.cart-add)作为ball的el属性值，这样就可以知道是那个add被点击，用于后面获取ball动画开始处的垂直偏移值
+                 this.dropBalls.push(ball)//将带有add元素信息的ball数据存放到dropBalls数组中，此处push方法不改变data中balls的值
                  return
                }
             }
         },
-      beforeEnter(el) {
+      beforeEnter(el) {//开始出现前
         let count = this.balls.length
-        while (count--) {
+        while (count--) {//先判断，后自减
           let ball = this.balls[count]
-          if (ball.show) {
+          if (ball.show) { //遍历dropBalls数组，获取其中每一个ball.el,并据此设置每一个小球的动画起点位置
             let rect = ball.el.getBoundingClientRect()
+//            获取ball动画开始处的水平和垂直偏移值
             let x = rect.left - 32
             let y = -(window.innerHeight - rect.top -22)
             el.style.display = ''
-            el.style.transform = `translate3d(0,${y}px,0}`
+            el.style.transform = `translate3d(0,${y}px,0)`
             let inner = el.getElementsByClassName('inner-hook')[0]
             inner.style.transform = `translate3d(${x}px,0,0)`
           }
         }
       },
-      enter(el,done) {
-        let refresh = el.offsetHeight
-        this.$nextTick( () => {
+      enter(el) {//出现中
+        let refresh = el.offsetHeight //触发浏览器重绘
+        this.$nextTick( () => { //将回调延迟到下次 DOM 更新循环之后执行
           el.style.transform = 'translate3d(0,0,0)'
           let inner = el.getElementsByClassName('inner-hook')[0]
           inner.style.transform = 'translate3d(0,0,0)'
         })
-        done()
       },
-      afterEnter(el) {
+      afterEnter(el) {//出现后
         let ball = this.dropBalls.shift()
         if(ball) {
           ball.show = false
           el.style.display = 'none'
         }
+      },
+      toggleList() {
+        if (!this.totalCount) {
+          return
+        }
+        this.fold = !this.fold
+      },
+      cartAdd2(el) {
+        this.$nextTick(() => { //避免两个动画同时运行带来的性能问题
+          this.drop(el)//在vue2中，访问子组件和DOM都用$refs
+        })
+      },
+      empty() {
+        this.selectFoods.forEach((food) => {
+            food.count = 0
+        })
       }
+    },
+    components:{
+        Cartcontrol
     }
 }
 </script>
 <style lang="stylus" rel="stylesheet/stylus">
+  @import '../../common/stylus/mixin.styl'
   .shopcart
     position:fixed
     left:0
@@ -229,14 +296,66 @@ export default {
           position: fixed
           left: 32px
           bottom: 22px
-          z-index: 9
-          &.drop-enter-active
-            transition:all 0.4s
-            .inner
-              width: 16px
-              height: 16px
-              border-radius: 50%
-              background:rgb(0,160,220)
-              transition:all 0.4s
+          z-index: 999
+          transition: all 0.6s cubic-bezier(0.49, -0.29, 0.75, 0.41)
+          .inner
+            width: 16px
+            height: 16px
+            border-radius: 50%
+            background:rgb(0,160,220)
+            transition:all 0.6s linear
 
+    .shopcart-list
+       position:absolute
+       left: 0
+       top: 0
+       z-index: -1
+       width: 100%
+       transform translate3d(0, -100%, 0)
+       &.fold-enter
+         transform:translate3d(0,0,0)
+       &.fold-enter-active,&.fold-leave-active
+        transition: all .5s
+       &.fold-enter-to,&.fold-leave
+         transform: translate3d(0,-100%,0)
+       &.fold-leave-to
+         transform:translate3d(0,0,0)
+       .list-header
+          height: 40px
+          line-height: 40px
+          padding: 0 18px
+          background:#f3f5f7
+          border-bottom: 1px solid rgba(7,17,27,0.1)
+          .title
+            float:left
+          .empty
+            float: right
+            font-size: 12px
+            color:rgb(0,160,220)
+       .list-content
+           padding: 0 18px
+           max-height: 217px
+           background:#fff
+           overflow:hidden
+           .food
+              position:relative
+              padding: 12px 0
+              box-sizing: border-box
+              border-1px(rgba(7,17,27,0.1))
+              .name
+                 line-height: 24px
+                 font-size: 14px
+                 color: rgb(7,17,27)
+              .price
+                 position: absolute
+                 right: 90px
+                 bottom: 12px
+                 line-height: 24px
+                 font-size: 14px
+                 font-weight: 700
+                 color:rgb(240,20,20)
+              .cartcontrol-wrapper
+                  position: absolute
+                  right: 0
+                  bottom: 6px
 </style>
