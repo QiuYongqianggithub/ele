@@ -1,4 +1,5 @@
 <template>
+  <div>
    <div class="goods">
      <div class="menu-wapper" ref="menu">
        <ul>
@@ -14,7 +15,7 @@
          <li v-for="item in goods" class="food-list food-list-hook">
            <h1 class="title">{{item.name}}</h1>
            <ul>
-             <li v-for="(food,index) in item.foods" class="food-item border-1px">
+             <li v-for="(food,index) in item.foods" class="food-item border-1px" @click="selectedFood(food,$event)">
                <div class="icon">
                  <img width="57" height="57" :src="food.icon" />
                </div>
@@ -40,10 +41,13 @@
      </div>
      <Shopcart ref="shopcart" :select-foods="selectFoods" :delivery-price="seller.deliveryPrice" :min-price="seller.minPrice"></Shopcart>
    </div>
+    <Food :food="selectFood" ref="food" @add="cartAdd2"></Food>
+  </div>
 </template>
 <script type="text/ecmascript-6">
  import Shopcart from '../../components/shopcart/Shopcart'
  import Cartcontrol from '../../components/cartcontrol/Cartcontrol'
+ import Food from '../../components/food/Food'
  import BScroll from 'better-scroll'
  const ERR_OK = 0
  export default {
@@ -56,7 +60,8 @@
      return {
          goods:[],
          listHeight:[],
-         scrollY: 0
+         scrollY: 0,
+         selectFood:{}
      }
    },
    computed:{
@@ -136,17 +141,20 @@
       },
      cartAdd2(target) {
            this._drop(target)
-     }
+     },
+      selectedFood(food,event) {
+           if (!event._constructed) {
+               return
+           }
+           this.selectFood = food
+           this.$refs.food.show()
+      }
    },
    components: {
       Shopcart,
-      Cartcontrol
+      Cartcontrol,
+      Food
    }
-//   events:{
-//       'cartAdd2'(target) {//Goods组件接受到了Cartcontrol组件派发来的自定义事件
-//           this._drop(target)//一路将Cartcontrol组件传来的target参数传到父组件_drop方法中
-//       }
-//   }
  }
 </script>
 <style lang="stylus" rel="stylesheet/stylus">
