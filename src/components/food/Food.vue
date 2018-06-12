@@ -61,16 +61,16 @@
            hide() {
                this.showFlag = false
            },
-           addFirst(event) {
+           addFirst() {
              if(!event._constructed) {
                return false
              }else {
                this.$emit('add', event.target)
-               Vue.set(this.food,'count',1)
-             }
+               this.$set(this.food,'count',1) //在实例创建之后添加新的属性到实例上，它不会触发视图更新,需要使用vm.set
+             }   
            },
            foodAdd(el) {
-             this.$emit('add', el)
+               this.$emit('add', el)
            }
        },
      components:{
